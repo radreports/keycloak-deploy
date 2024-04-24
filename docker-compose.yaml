@@ -34,6 +34,7 @@ services:
       - postgres  # Corrected to match the actual service name
     ports:
       - 8090:8080
+      - ":::8091:8080"
 
 volumes:
   postgres_data:
