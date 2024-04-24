@@ -1,1 +1,44 @@
+version: '3.6'
+
+services:
+  postgres:  # Renamed from `postgres` to `keycloakdb` if you prefer the name `keycloakdb`
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+
+  keycloak_web:
+    image: quay.io/keycloak/keycloak:23.0.2-0
+    container_name: keycloak_web
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak  # Adjusted to match service name
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+
+      KC_HOSTNAME: auth.deepmd.io
+      KC_PROXY: edge
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      
+    command: start-dev
+    depends_on:
+      - postgres  # Corrected to match the actual service name
+    ports:
+      - 8090:8080
+      
+
+volumes:
+  postgres_data:
 
