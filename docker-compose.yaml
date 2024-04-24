@@ -1,16 +1,5 @@
 version: '3'
 
-
-
-Report this ad
-1
-
-I've been attempting to learn Docker and specifically Docker Compose for my home network. I have a number of other containers I've been able to successfully deploy, but I'm still learning/experimenting. My recent project is to attempt creating a Keycloak container, but I've been struggling with my database connection.
-
-I've been adapting the instructions found on Running Keycloak in a Container and found examples of Docker Compose configurations. Here is what I have so far for my Docker Compose file:
-
-version: '3.6'
-
 services:
   keycloak_web:
     image: quay.io/keycloak/keycloak:23.0.2
