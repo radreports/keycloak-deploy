@@ -29,6 +29,7 @@ services:
       KC_HEALTH_ENABLED: "true"
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      BIND_ADDRESS: 0.0.0.0
     command: start-dev
     depends_on:
       - postgres  # Corrected to match the actual service name
