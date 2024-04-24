@@ -1,33 +1,158 @@
 version: '3'
 
-volumes:
-  postgres_data:
-      driver: local
+
+
+Report this ad
+1
+
+I've been attempting to learn Docker and specifically Docker Compose for my home network. I have a number of other containers I've been able to successfully deploy, but I'm still learning/experimenting. My recent project is to attempt creating a Keycloak container, but I've been struggling with my database connection.
+
+I've been adapting the instructions found on Running Keycloak in a Container and found examples of Docker Compose configurations. Here is what I have so far for my Docker Compose file:
+
+version: '3.6'
 
 services:
-  postgres:
-      image: postgres
-      volumes:
-        - postgres_data:/var/lib/postgresql/data
-      environment:
-        POSTGRES_DB: keycloak
-        POSTGRES_USER: keycloak
-        POSTGRES_PASSWORD: password
-  keycloak:
-      image: quay.io/keycloak/keycloak:legacy
-      environment:
-        DB_VENDOR: POSTGRES
-        DB_ADDR: postgres
-        DB_DATABASE: keycloak
-        DB_USER: keycloak
-        DB_SCHEMA: public
-        DB_PASSWORD: password
-        KEYCLOAK_USER: admin
-        KEYCLOAK_PASSWORD: P@dmini2
-        # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the PostgreSQL JDBC driver documentation in order to use it.
-        #JDBC_PARAMS: "ssl=true"
-      ports:
-        - 8090:8080
-        - ":::8091:8080"
-      depends_on:
-        - postgres
+  keycloak_web:
+    image: quay.io/keycloak/keycloak:23.0.2
+    container_name: keycloak_web
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloakdb:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: 'false'
+      KC_HOSTNAME_STRICT_HTTPS: 'false'
+
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: 'true'
+      KC_HEALTH_ENABLED: 'true'
+    command: start-dev
+    depends_on:
+      - keycloakdb
+    ports:
+      - '8080:8080'
+
+
+  keycloakdb:
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+
+volumes:
+  postgres_data:
+When I attempt to bring my container online, I receive the following error (which indicates a database connection error):
+
+Starting data_keycloakdb_1 ... done
+Recreating keycloak_web    ... done
+Attaching to keycloak_web
+keycloak_web     | Updating the configuration and installing your custom providers, if any. Please wait.
+keycloak_web     | 2024-02-28 01:05:44,993 INFO  [io.quarkus.deployment.QuarkusAugmentor] (main) Quarkus augmentation completed in 11051ms
+keycloak_web     | 2024-02-28 01:05:47,100 INFO  [org.keycloak.quarkus.runtime.hostname.DefaultHostnameProvider] (main) Hostname settings: Base URL: <unset>, Hostname: localhost, Strict HTTPS: false, Path: <request>, Strict BackChannel: false, Admin URL: <unset>, Admin: <request>, Port: 8080, Proxied: false
+keycloak_web     | 2024-02-28 01:05:49,123 WARN  [io.quarkus.agroal.runtime.DataSources] (main) Datasource <default> enables XA but transaction recovery is not enabled. Please enable transaction recovery by setting quarkus.transaction-manager.enable-recovery=true, otherwise data may be lost if the application is terminated abruptly
+keycloak_web     | 2024-02-28 01:05:49,293 WARN  [org.infinispan.PERSISTENCE] (keycloak-cache-init) ISPN000554: jboss-marshalling is deprecated and planned for removal
+keycloak_web     | 2024-02-28 01:05:49,350 WARN  [org.infinispan.CONFIG] (keycloak-cache-init) ISPN000569: Unable to persist Infinispan internal caches as no global state enabled
+keycloak_web     | 2024-02-28 01:05:49,455 INFO  [org.infinispan.CONTAINER] (keycloak-cache-init) ISPN000556: Starting user marshaller 'org.infinispan.jboss.marshalling.core.JBossUserMarshaller'
+keycloak_web     | 2024-02-28 01:05:49,470 WARN  [io.agroal.pool] (agroal-11) Datasource '<default>': The connection attempt failed.
+keycloak_web     | 2024-02-28 01:05:49,472 WARN  [org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator] (JPA Startup Thread) HHH000342: Could not obtain connection to query metadata: java.lang.NullPointerException: Cannot invoke "org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(java.sql.SQLException, String)" because the return value of "org.hibernate.resource.transaction.backend.jta.internal.JtaIsolationDelegate.sqlExceptionHelper()" is null
+keycloak_web     |      at org.hibernate.resource.transaction.backend.jta.internal.JtaIsolationDelegate.doTheWork(JtaIsolationDelegate.java:186)
+keycloak_web     |      at org.hibernate.resource.transaction.backend.jta.internal.JtaIsolationDelegate.lambda$delegateWork$1(JtaIsolationDelegate.java:75)
+keycloak_web     |      at org.hibernate.resource.transaction.backend.jta.internal.JtaIsolationDelegate.doInSuspendedTransaction(JtaIsolationDelegate.java:107)
+keycloak_web     |      at org.hibernate.resource.transaction.backend.jta.internal.JtaIsolationDelegate.delegateWork(JtaIsolationDelegate.java:72)
+keycloak_web     |      at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.getJdbcEnvironmentUsingJdbcMetadata(JdbcEnvironmentInitiator.java:279)
+keycloak_web     |      at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:193)
+keycloak_web     |      at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:69)
+keycloak_web     |      at org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.initiateService(StandardServiceRegistryImpl.java:119)
+keycloak_web     |      at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:264)
+keycloak_web     |      at org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:239)
+keycloak_web     |      at org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:216)
+keycloak_web     |      at org.hibernate.engine.jdbc.internal.JdbcServicesImpl.configure(JdbcServicesImpl.java:52)
+keycloak_web     |      at org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.configureService(StandardServiceRegistryImpl.java:125)
+keycloak_web     |      at org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:248)
+keycloak_web     |      at org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:216)
+keycloak_web     |      at org.hibernate.boot.internal.SessionFactoryOptionsBuilder.<init>(SessionFactoryOptionsBuilder.java:273)
+keycloak_web     |      at io.quarkus.hibernate.orm.runtime.recording.PrevalidatedQuarkusMetadata.buildSessionFactoryOptionsBuilder(PrevalidatedQuarkusMetadata.java:70)
+keycloak_web     |      at io.quarkus.hibernate.orm.runtime.boot.FastBootEntityManagerFactoryBuilder.build(FastBootEntityManagerFactoryBuilder.java:81)
+keycloak_web     |      at io.quarkus.hibernate.orm.runtime.FastBootHibernatePersistenceProvider.createEntityManagerFactory(FastBootHibernatePersistenceProvider.java:74)
+keycloak_web     |      at jakarta.persistence.Persistence.createEntityManagerFactory(Persistence.java:80)
+keycloak_web     |      at jakarta.persistence.Persistence.createEntityManagerFactory(Persistence.java:55)
+keycloak_web     |      at io.quarkus.hibernate.orm.runtime.JPAConfig$LazyPersistenceUnit.get(JPAConfig.java:156)
+keycloak_web     |      at io.quarkus.hibernate.orm.runtime.JPAConfig$1.run(JPAConfig.java:64)
+keycloak_web     |      at java.base/java.lang.Thread.run(Thread.java:840)
+keycloak_web     |
+keycloak_web     | 2024-02-28 01:05:50,519 INFO  [org.keycloak.connections.infinispan.DefaultInfinispanConnectionProviderFactory] (main) Node name: node_227989, Site name: null
+keycloak_web     | 2024-02-28 01:05:50,522 INFO  [org.keycloak.broker.provider.AbstractIdentityProviderMapper] (main) Registering class org.keycloak.broker.provider.mappersync.ConfigSyncEventListener
+keycloak_web     | 2024-02-28 01:05:50,530 WARN  [io.agroal.pool] (agroal-11) Datasource '<default>': The connection attempt failed.
+keycloak_web     | 2024-02-28 01:05:50,572 ERROR [org.keycloak.quarkus.runtime.cli.ExecutionExceptionHandler] (main) ERROR: Failed to start server in (development) mode
+keycloak_web     | 2024-02-28 01:05:50,572 ERROR [org.keycloak.quarkus.runtime.cli.ExecutionExceptionHandler] (main) ERROR: Failed to obtain JDBC connection
+keycloak_web     | 2024-02-28 01:05:50,572 ERROR [org.keycloak.quarkus.runtime.cli.ExecutionExceptionHandler] (main) ERROR: The connection attempt failed.
+keycloak_web     | 2024-02-28 01:05:50,572 ERROR [org.keycloak.quarkus.runtime.cli.ExecutionExceptionHandler] (main) ERROR: keycloakdb
+keycloak_web     | 2024-02-28 01:05:50,573 ERROR [org.keycloak.quarkus.runtime.cli.ExecutionExceptionHandler] (main) For more details run the same command passing the '--verbose' option. Also you can use '--help' to see the details about the usage of the particular command.
+Additionally, I've tried a bunch of different iterations of the Docker networking, database URL settings, and I've changed the KC_DB_URL to breakout KC_DB_HOSTNAME, KC_DB_PORT, etc. explicitly.
+
+Any help or pointer in the right direction would be greatly appreciated. Thank you in advance.
+
+dockerdocker-composekeycloak
+Share
+Improve this question
+Follow
+asked Feb 28 at 1:29
+user1502133's user avatar
+user1502133
+1333 bronze badges
+Add a comment
+1 Answer
+Sorted by:
+
+Highest score (default)
+2
+
+The postgres version is matter KC_DB_USERNAME andKC_DB_PASSWORD can't use same string.
+
+This docker-compose.yml file will work
+
+version: '3.6'
+
+services:
+  keycloak_web:
+    image: quay.io/keycloak/keycloak:23.0.7
+    container_name: keycloak_web
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloakdb:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev
+    depends_on:
+      - keycloakdb
+    ports:
+      - 8080:8080
+
+  keycloakdb:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+
+volumes:
+  postgres_data:
