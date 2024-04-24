@@ -1,6 +1,14 @@
 version: '3.6'
 
 services:
+  postgres:
+      image: postgres
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      environment:
+        POSTGRES_DB: keycloak
+        POSTGRES_USER: keycloak
+        POSTGRES_PASSWORD: password
   keycloak_web:
     image: quay.io/keycloak/keycloak:23.0.7
     container_name: keycloak_web
